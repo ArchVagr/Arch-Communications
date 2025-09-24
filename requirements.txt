@@ -1,0 +1,5 @@
+Flask==3.1.2
+pyside6==6.9.2
+pyside6_addons==6.9.2
+pyside6_essentials==6.9.2
+Requests==2.32.5
