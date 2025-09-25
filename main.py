@@ -4,7 +4,6 @@ import sqlite3 as sql
 from PATH import PATH
 
 
-
 def create_table_messages():
 
     connection = sql.connect(PATH)

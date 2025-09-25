@@ -294,7 +294,6 @@ class Main_App(QWidget):
         mini=NewChat()
         mini.exec()
 
-
 class Message(QWidget):
         def __init__(self, message: str, time: str):
             super().__init__()
