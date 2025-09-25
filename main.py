@@ -1,30 +1,32 @@
 import json
 import os.path
 import sqlite3 as sql
+from PATH import PATH
 
 
 
-def create_table_accounts():
-    PATH = "MessageDatabase.db"
+def create_table_messages():
 
     connection = sql.connect(PATH)
+    connection.execute("PRAGMA foreign_keys = ON;")  # включаем поддержку внешних ключей
+    cursor = connection.cursor()
 
-    cursor=connection.cursor()
     cursor.execute(
         """
-        CREATE TABLE Chats (
-        chat_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        participant_1 TEXT NOT NULL,
-        participant_2 TEXT NOT NULL,
-        created_at INTEGER NOT NULL
+        CREATE TABLE IF NOT EXISTS Accounts (
+            user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username INTEGER NOT NULL,
+            password INTEGER NOT NULL
         );
-        """,
-
+        """
     )
+
+    connection.commit()
     cursor.close()
+    connection.close()
 
 def add_user(username,password):
-    PATH = "MessageDatabase.db"
+
 
     connection = sql.connect(PATH)
 
@@ -37,7 +39,7 @@ def add_user(username,password):
     cursor.close()
 
 def verify_user(username,password):
-    PATH = "MessageDatabase.db"
+
 
     connection = sql.connect(PATH)
 
@@ -52,7 +54,7 @@ def verify_user(username,password):
         return None
 
 def user_search(username):
-    PATH = "MessageDatabase.db"
+
 
     connection = sql.connect(PATH)
     cursor = connection.cursor()
@@ -63,7 +65,7 @@ def user_search(username):
     return response if response else False
 
 def id_return(username,password):
-    PATH = "MessageDatabase.db"
+
 
     connection = sql.connect(PATH)
     cursor = connection.cursor()
@@ -78,7 +80,7 @@ def id_return(username,password):
         return False
 
 def create_chat(participant_1,participant_2):
-    PATH = "MessageDatabase.db"
+
 
     connection = sql.connect(PATH)
     cursor = connection.cursor()
@@ -87,6 +89,14 @@ def create_chat(participant_1,participant_2):
     connection.commit()
     cursor.close()
 
+def create_message(chat_id,sender,text):
 
+    connection = sql.connect(PATH)
 
+    cursor = connection.cursor()
+    cursor.execute('''INSERT INTO Messages(sender_id,chat_id,message_text) VALUES(?,?,?)''',(chat_id,sender,text))
 
+    connection.commit()
+    cursor.close()
+
+create_table_messages()

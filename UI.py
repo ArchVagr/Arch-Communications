@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,QDialog,QMessageBox,QListWidgetItem, QHBoxLayout,QListWidget,QTextEdit,QSizePolicy, QApplication,QMainWindow, QGraphicsDropShadowEffect,QFormLayout,QLineEdit,QGridLayout,QSplitter
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap
 import requests
 
 import main
@@ -294,6 +295,32 @@ class Main_App(QWidget):
         mini.exec()
 
 
+class Message(QWidget):
+        def __init__(self, message: str, time: str):
+            super().__init__()
+
+            main_layout = QHBoxLayout(self)
+
+
+            avatar_size = 40
+            pm = QPixmap(avatar_size, avatar_size)
+
+            profile = QLabel()
+            profile.setPixmap(pm)
+            main_layout.addWidget(profile, alignment=Qt.AlignTop)
+
+
+            body = QVBoxLayout()
+            text = QLabel(message)
+            text.setWordWrap(True)
+
+            time_label = QLabel(time)
+            time_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            time_label.setStyleSheet("font-size: 11px; color: gray;")
+
+            body.addWidget(text)
+            body.addWidget(time_label)
+            main_layout.addLayout(body)
 
 app=QApplication([])
 window=WindowManager()
