@@ -1,8 +1,11 @@
+import sqlite3
+
 import pydantic
 from flask import Flask,request
 import sqlite3 as sql
 import main
 from pydantic import BaseModel,constr
+import json
 
 #SERVER
 
@@ -15,10 +18,10 @@ class User(BaseModel):
 
 @server.post("/add")
 def handle_signup():
-    query = User(request.get_json())
+    query = User(json.loads(request.get_json()))
     try:
-        main.add_user(query.username,query.password)
-        return {"status":True,id:main.id_return(query.username,query.password)}
+        attempt=main.add_user(query.username,query.password)
+        return {"status":True,'profile':attempt}
     except sql.IntegrityError:
         return  {"status":False}
     else:
@@ -26,11 +29,11 @@ def handle_signup():
 
 @server.post("/signin")
 def signin():
-    query=User(request.get_json())
+    query=User(json.loads(request.get_json()))
     try:
-        check=main.id_return(query.username,query.password)
+        check=main.signup_verification(query.username,query.password)
         return {"status":check}
-    except pydantic.ValidationError:
+    except pydantic.ValidationError or sqlite3.IntegrityError:
         return {"status":False}
 
 

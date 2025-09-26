@@ -1,9 +1,11 @@
 from PATH import PATH
+import sqlite3
 from sqlalchemy import create_engine,String,Integer,ForeignKey,Column,DateTime,text
 from sqlalchemy.orm import sessionmaker,declarative_base,Session,relationship
 
 engine = create_engine(PATH)
-session = sessionmaker(bind=engine)
+Session = sessionmaker(bind=engine)
+session=Session()
 
 Base=declarative_base()
 
@@ -11,34 +13,55 @@ class User(Base):
     __tablename__ = "users"
 
     id=Column(Integer,primary_key=True,autoincrement=True)
-    username=Column(String(18),nullable=False)
-    password=Column(String,unique=True,nullable=False)
+    username=Column(String,nullable=False,unique=True)
+    password=Column(String,nullable=False)
 
     messages = relationship("Message", back_populates="author")
 
+def add_user(username,password):
+    try:
+        user=User(username=username,password=password)
+        session.add(user)
+        session.commit()
+        return user
+    except sqlite3.IntegrityError:
+        return False
+def signup_verification(username,password):
+    search=session.query(User).filter_by(username=username,password=password)
+    return search
 
 class Chat(Base):
     __tablename__='chats'
 
     chat_id=Column(Integer,primary_key=True,autoincrement=True)
     participant_1 = Column(Integer, ForeignKey("users.id"))
-    participant_2 = Column(String(18), nullable=False)
+    participant_2 = Column(Integer, ForeignKey("users.id"))
 
-    messages = relationship('Messages', back_populates='chat')
+    participant1 = relationship("User", foreign_keys=[participant_1])
+    participant2 = relationship("User", foreign_keys=[participant_2])
 
+    messages = relationship('Message', back_populates='chat')
+def add_chat(participant_1,participant_2):
+    session.add(Chat(participant_1=participant_1,participant_2=participant_2))
+    session.commit()
 
-class Messages(Base):
+class Message(Base):
     __tablename__='messages'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    chat=Column(Integer,ForeignKey('chats.chat_id'),nullable=False)
-    author=Column(Integer,ForeignKey('users.id'),nullable=False)
+    chat_id=Column(Integer,ForeignKey('chats.chat_id'),nullable=False)
+    author_id=Column(Integer,ForeignKey('users.id'),nullable=False)
+    content=Column(String,nullable=False)
     created_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
 
     author=relationship('User',back_populates='messages')
     chat=relationship('Chat',back_populates='messages')
+def add_message(chat_id,author_id,content):
+    session.add(Message(chat_id=chat_id,author_id=author_id,content=content))
+    session.commit()
 
-Base.metadata.create_all(engine)
+
+
 
 # def create_table_messages():
 #
