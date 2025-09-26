@@ -1,3 +1,5 @@
+import sqlalchemy.exc
+
 from PATH import PATH
 import sqlite3
 from sqlalchemy import create_engine,String,Integer,ForeignKey,Column,DateTime,text
@@ -23,11 +25,21 @@ def add_user(username,password):
         user=User(username=username,password=password)
         session.add(user)
         session.commit()
-        return user
+        return user.id
     except sqlite3.IntegrityError:
+        session.rollback()
         return False
+    except sqlalchemy.exc.SQLAlchemyError:
+        session.rollback()
+        return False
+
 def signup_verification(username,password):
-    search=session.query(User).filter_by(username=username,password=password)
+    search=session.query(User).filter_by(username=username,password=password).first()
+    return search
+
+def users_search(username):
+    entered = f"%{username}%"
+    search=session.query(User).filter(User.username.like(entered)).all()
     return search
 
 class Chat(Base):
@@ -42,8 +54,10 @@ class Chat(Base):
 
     messages = relationship('Message', back_populates='chat')
 def add_chat(participant_1,participant_2):
-    session.add(Chat(participant_1=participant_1,participant_2=participant_2))
+    chat=Chat(participant_1=participant_1, participant_2=participant_2)
+    session.add(chat)
     session.commit()
+    return chat.chat_id
 
 class Message(Base):
     __tablename__='messages'
@@ -63,98 +77,3 @@ def add_message(chat_id,author_id,content):
 
 
 
-# def create_table_messages():
-#
-#     connection = sql.connect(PATH)
-#     connection.execute("PRAGMA foreign_keys = ON;")  # включаем поддержку внешних ключей
-#     cursor = connection.cursor()
-#
-#     cursor.execute(
-#         """
-#         CREATE TABLE IF NOT EXISTS Accounts (
-#             user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-#             username INTEGER NOT NULL,
-#             password INTEGER NOT NULL
-#         );
-#         """
-#     )
-#
-#     connection.commit()
-#     cursor.close()
-#     connection.close()
-#
-# def add_user(username,password):
-#
-#
-#     connection = sql.connect(PATH)
-#
-#     cursor = connection.cursor()
-#     cursor.execute("""
-#     INSERT INTO Accounts (username,password)
-#     VALUES
-#     (?,?)""",(username,password))
-#     connection.commit()
-#     cursor.close()
-#
-# def verify_user(username,password):
-#
-#
-#     connection = sql.connect(PATH)
-#
-#     cursor=connection.cursor()
-#     cursor.execute("""
-#     SELECT * FROM Accounts WHERE username=? and password=?
-#     """,(username,password))
-#     response=cursor.fetchall()
-#     if response:
-#         return list(response)
-#     else:
-#         return None
-#
-# def user_search(username):
-#
-#
-#     connection = sql.connect(PATH)
-#     cursor = connection.cursor()
-#     cursor.execute("""
-#         SELECT username,id FROM Accounts WHERE username LIKE ?
-#         """, (username + "%",))
-#     response = cursor.fetchall()
-#     return response if response else False
-#
-# def id_return(username,password):
-#
-#
-#     connection = sql.connect(PATH)
-#     cursor = connection.cursor()
-#     cursor.execute("""
-#         SELECT id FROM Accounts WHERE username = ? AND password=?
-#         """, (username,password))
-#     response = cursor.fetchone()
-#     if response:
-#         for i in response:
-#             return i
-#     else:
-#         return False
-#
-# def create_chat(participant_1,participant_2):
-#
-#
-#     connection = sql.connect(PATH)
-#     cursor = connection.cursor()
-#     cursor.execute('INSERT INTO Chats(participant_1,participant_2) VALUES(?,?)',
-#                    (participant_1,participant_2))
-#     connection.commit()
-#     cursor.close()
-#
-# def create_message(chat_id,sender,text):
-#
-#     connection = sql.connect(PATH)
-#
-#     cursor = connection.cursor()
-#     cursor.execute('''INSERT INTO Messages(sender_id,chat_id,message_text) VALUES(?,?,?)''',(chat_id,sender,text))
-#
-#     connection.commit()
-#     cursor.close()
-#
-# create_table_messages()

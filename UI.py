@@ -160,6 +160,7 @@ class Registration(QWidget):
 
 
 
+
 class SignUp(QWidget):
     def __init__(self,manager):
         super().__init__()
@@ -206,7 +207,7 @@ class SignUp(QWidget):
             response = requests.post("http://127.0.0.1:5555/signin", json={"username": text[0], "password": text[1]})
             if response.json()["status"]:
                 self.close()
-                self.manager.add_main(Main_App, response.json())
+                self.manager.add_main(Main_App, response)
                 self.manager.demonstrate("App")
             else:
                 QMessageBox.warning(self, "Ошибка", "Имя пользователя или пароль неверный!")
@@ -220,6 +221,8 @@ class SignUp(QWidget):
 class NewChat(QDialog):
     def __init__(self):
         super().__init__()
+        self.selected_id=None
+        self.selected_username=None
 
         self.setWindowTitle("New chat")
 
@@ -260,13 +263,18 @@ class NewChat(QDialog):
 
 
     def on_click(self,it:QListWidgetItem):
-        print(it.data(Qt.UserRole))
+        target_id=it.data(Qt.UserRole)
+        self.selected_id=target_id
+        self.selected_username = it.text()
+        self.accept()
+
 
 class Main_App(QWidget):
-    def __init__(self,manager,user_id):
+    def __init__(self,manager,user_id:int):
         super().__init__()
 
         self.manager = manager
+        self.user_id=user_id["status"]
         self.layout=QGridLayout()
 
         self.chat=QTextEdit()
@@ -292,9 +300,47 @@ class Main_App(QWidget):
 
     def open_new(self):
         mini=NewChat()
-        mini.exec()
+        if mini.exec()==QDialog.Accepted and mini.selected_id is not None:
+            print(mini.selected_id,self.user_id)
+            response=requests.post('http://127.0.0.1:5555/add_chat',
+            json={"participant_1": mini.selected_id,"participant_2": self.user_id})
+            if response.json()["status"]:
+                chat_widget=Chat(response.json()["status"], mini.selected_username, mini.selected_id)
+                item = QListWidgetItem()
+                item.setSizeHint(chat_widget.sizeHint())
+                self.contacts.addItem(item)
+                self.contacts.setItemWidget(item,chat_widget)
 
 
+
+
+
+class Chat(QWidget):
+    def __init__(self,chat_id,username,receiver_id):
+        super().__init__()
+
+        self.username=username
+        self.id=chat_id
+        self.receiver_id=receiver_id
+
+        main_layout=QHBoxLayout(self)
+
+        avatar_size = 40
+        pm = QPixmap(avatar_size, avatar_size)
+        pm.fill(Qt.black)
+        profile = QLabel()
+        profile.setPixmap(pm)
+
+        nick=QLabel(username)
+
+        main_layout.addWidget(profile,alignment=Qt.AlignmentFlag.AlignLeft)
+        main_layout.addWidget(nick,alignment=Qt.AlignmentFlag.AlignHCenter)
+
+
+class ChatItem(QListWidgetItem):
+    def __init__(self, chat: Chat):
+        super().__init__(chat.username)
+        self.chat = chat
 
 class Message(QWidget):
         def __init__(self, message: str, time: str):

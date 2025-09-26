@@ -14,14 +14,20 @@ server=Flask(__name__)
 
 class User(BaseModel):
     username:str
-    password:constr(min_length=8)
+    password:str
+
+class Chat(BaseModel):
+    participant_1:int
+    participant_2:int
+
 
 @server.post("/add")
 def handle_signup():
-    query = User(json.loads(request.get_json()))
+    received = request.get_json()
+    query = User.model_validate(received)
     try:
         attempt=main.add_user(query.username,query.password)
-        return {"status":True,'profile':attempt}
+        return {"status":attempt}
     except sql.IntegrityError:
         return  {"status":False}
     else:
@@ -29,10 +35,11 @@ def handle_signup():
 
 @server.post("/signin")
 def signin():
-    query=User(json.loads(request.get_json()))
+    received=request.get_json()
+    query=User.model_validate(received)
     try:
         check=main.signup_verification(query.username,query.password)
-        return {"status":check}
+        return {"status":check.id}
     except pydantic.ValidationError or sqlite3.IntegrityError:
         return {"status":False}
 
@@ -40,21 +47,28 @@ def signin():
 @server.post("/search")
 def search():
     query=request.get_json()
-    results=main.user_search(query['query'])
+    results=main.users_search(query['query'])
     final=[]
     if not results:
         return False
     elif results:
         for i in results:
-            final.append({i[0]:i[1]})
+            final.append({i.username:i.id})
         return {"results":final}
 
-
+@server.post("/add_chat")
+def add_chat():
+    data=request.get_json()
+    chat=Chat.model_validate(data)
+    try:
+        action=main.add_chat(chat.participant_1,chat.participant_2)
+        return {"status": action}
+    except pydantic.ValidationError or sqlite3.IntegrityError:
+        return {"status": False}
 
 
 
 server.run(port=5555)
-
 
 
 
