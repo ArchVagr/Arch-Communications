@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (
-    QWidget, QLabel, QPushButton,
+    QWidget, QLabel, QPushButton,QScrollArea,
     QVBoxLayout,QDialog,QMessageBox,QListWidgetItem, QHBoxLayout,QListWidget,QTextEdit,QSizePolicy, QApplication,QMainWindow, QGraphicsDropShadowEffect,QFormLayout,QLineEdit,QGridLayout,QSplitter
 )
 from PySide6.QtCore import Qt
@@ -207,7 +207,7 @@ class SignUp(QWidget):
             response = requests.post("http://127.0.0.1:5555/signin", json={"username": text[0], "password": text[1]})
             if response.json()["status"]:
                 self.close()
-                self.manager.add_main(Main_App, response)
+                self.manager.add_main(Main_App, response.json()["status"])
                 self.manager.demonstrate("App")
             else:
                 QMessageBox.warning(self, "Ошибка", "Имя пользователя или пароль неверный!")
@@ -274,10 +274,11 @@ class Main_App(QWidget):
         super().__init__()
 
         self.manager = manager
-        self.user_id=user_id["status"]
+        self.user_id=user_id
         self.layout=QGridLayout()
+        self.choosen_chat=None
 
-        self.chat=QTextEdit()
+        self.chat=Chat()
         self.type=QLineEdit()
         self.search=QPushButton("Start New Chat")
         self.enter=QPushButton("Enter")
@@ -286,41 +287,110 @@ class Main_App(QWidget):
         self.setWindowTitle("App")
         self.setLayout(self.layout)
 
+        self._chat_pos = (0, 1, 2, 2)
 
+        self.layout.addWidget(self.chat, *self._chat_pos)
         self.layout.addWidget(self.search,0,0)
         self.layout.addWidget(self.contacts,1,0,1,1)
-        self.layout.addWidget(self.chat,0,1,2,2)
         self.layout.addWidget(self.type,2,1)
         self.layout.addWidget(self.enter,2,2)
+
 
         self.contacts.setFixedWidth(200)
         self.search.setFixedWidth(200)
 
         self.search.clicked.connect(self.open_new)
 
+        self.contacts.itemClicked.connect(self.choose_chat)
+
+    def choose_chat(self,item):
+        self.choosen_chat=self.contacts.itemWidget(item).chat_id
+        query=requests.post('http://127.0.0.1:5555/search_message',json={"chat_id":self.choosen_chat})
+        if query.json()['result']:
+            for i in query.json()['result']:
+                if i["id"]==self.user_id:
+                    self.chat.add_user_message(i["content"],i["created_at"])
+                else:
+                    self.chat.add_foreign_message(i["content"],i["created_at"])
+
+
+
+
     def open_new(self):
+        self.chat.clear_messages()
         mini=NewChat()
         if mini.exec()==QDialog.Accepted and mini.selected_id is not None:
             print(mini.selected_id,self.user_id)
             response=requests.post('http://127.0.0.1:5555/add_chat',
             json={"participant_1": mini.selected_id,"participant_2": self.user_id})
             if response.json()["status"]:
-                chat_widget=Chat(response.json()["status"], mini.selected_username, mini.selected_id)
+                chat_widget=Chat_Icon(response.json()["status"], mini.selected_username, mini.selected_id)
                 item = QListWidgetItem()
                 item.setSizeHint(chat_widget.sizeHint())
                 self.contacts.addItem(item)
                 self.contacts.setItemWidget(item,chat_widget)
 
+class Message(QWidget):
+    def __init__(self, message: str, time: str):
+        super().__init__()
+        body = QVBoxLayout(self)
 
+        text = QLabel(message)
+        text.setWordWrap(True)
 
+        time_label = QLabel(time)
+        time_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        time_label.setStyleSheet("font-size: 11px; color: gray;")
 
+        body.addWidget(text)
+        body.addWidget(time_label)
 
 class Chat(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        layout = QVBoxLayout(self)
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+
+        layout.addWidget(self.scroll)
+
+
+        self.container = QWidget()
+        self.container.setStyleSheet("background:#FFFFFF;")
+
+        self.body = QVBoxLayout(self.container)
+        self.body.addStretch()
+
+        self.scroll.setWidget(self.container)
+
+    def add_user_message(self,text,time):
+        self.body.addWidget(Message(text,time),alignment=Qt.AlignmentFlag.AlignRight)
+
+    def add_foreign_message(self,text,time):
+        self.body.addWidget(Message(text,time),alignment=Qt.AlignmentFlag.AlignLeft)
+
+    def clear_messages(self):
+
+        old = self.scroll.takeWidget()
+        if old is not None:
+            old.deleteLater()
+
+
+        self.container = QWidget()
+        self.body = QVBoxLayout(self.container)
+        self.body.addStretch()
+
+        self.scroll.setWidget(self.container)
+
+
+
+class Chat_Icon(QWidget):
     def __init__(self,chat_id,username,receiver_id):
         super().__init__()
 
         self.username=username
-        self.id=chat_id
+        self.chat_id=chat_id
         self.receiver_id=receiver_id
 
         main_layout=QHBoxLayout(self)
@@ -338,36 +408,14 @@ class Chat(QWidget):
 
 
 class ChatItem(QListWidgetItem):
-    def __init__(self, chat: Chat):
+    def __init__(self, chat: Chat_Icon):
         super().__init__(chat.username)
         self.chat = chat
 
-class Message(QWidget):
-        def __init__(self, message: str, time: str):
-            super().__init__()
-
-            main_layout = QHBoxLayout(self)
 
 
-            avatar_size = 40
-            pm = QPixmap(avatar_size, avatar_size)
-
-            profile = QLabel()
-            profile.setPixmap(pm)
-            main_layout.addWidget(profile, alignment=Qt.AlignTop)
 
 
-            body = QVBoxLayout()
-            text = QLabel(message)
-            text.setWordWrap(True)
-
-            time_label = QLabel(time)
-            time_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            time_label.setStyleSheet("font-size: 11px; color: gray;")
-
-            body.addWidget(text)
-            body.addWidget(time_label)
-            main_layout.addLayout(body)
 
 app=QApplication([])
 window=WindowManager()

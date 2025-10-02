@@ -59,6 +59,10 @@ def add_chat(participant_1,participant_2):
     session.commit()
     return chat.chat_id
 
+def search_chat(participant_1,participant_2):
+    chat=session.query(Chat).filter_by(participant_1=participant_1,participant_2=participant_2).first()
+    return chat
+
 class Message(Base):
     __tablename__='messages'
 
@@ -74,6 +78,7 @@ def add_message(chat_id,author_id,content):
     session.add(Message(chat_id=chat_id,author_id=author_id,content=content))
     session.commit()
 
-
-
+def search_messages(chat_id):
+    search=session.query(Message).filter_by(chat_id=chat_id).all()
+    return search
 

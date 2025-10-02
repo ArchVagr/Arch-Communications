@@ -12,7 +12,7 @@ import json
 
 server=Flask(__name__)
 
-class User(BaseModel):
+class UserVer(BaseModel):
     username:str
     password:str
 
@@ -20,11 +20,24 @@ class Chat(BaseModel):
     participant_1:int
     participant_2:int
 
+class MessageRequest(BaseModel):
+    chat_id:int
+
+def message_to_dict(m):
+    return {
+        "id": m.id,
+        "chat_id": m.chat_id,
+        "author_id": m.author_id,
+        "content": m.content,
+        "created_at": m.created_at.isoformat() if m.created_at else None,
+    }
+
+
 
 @server.post("/add")
 def handle_signup():
     received = request.get_json()
-    query = User.model_validate(received)
+    query = UserVer.model_validate(received)
     try:
         attempt=main.add_user(query.username,query.password)
         return {"status":attempt}
@@ -36,11 +49,11 @@ def handle_signup():
 @server.post("/signin")
 def signin():
     received=request.get_json()
-    query=User.model_validate(received)
+    query=UserVer.model_validate(received)
     try:
         check=main.signup_verification(query.username,query.password)
         return {"status":check.id}
-    except pydantic.ValidationError or sqlite3.IntegrityError:
+    except (pydantic.ValidationError, sqlite3.IntegrityError):
         return {"status":False}
 
 
@@ -59,13 +72,28 @@ def search():
 @server.post("/add_chat")
 def add_chat():
     data=request.get_json()
+    print(data)
     chat=Chat.model_validate(data)
-    try:
+    res=main.search_chat(chat.participant_1, chat.participant_2)
+    if res:
+        return  {"status": res.chat_id}
+    elif res is None:
         action=main.add_chat(chat.participant_1,chat.participant_2)
         return {"status": action}
-    except pydantic.ValidationError or sqlite3.IntegrityError:
+    else:
         return {"status": False}
 
+@server.post("/search_message")
+def search_message():
+    data=request.get_json()
+    id=MessageRequest.model_validate(data)
+    print(id.chat_id)
+    try:
+        action=main.search_messages(id.chat_id)
+        print(action)
+        return {"result":[message_to_dict(i) for i in action]}
+    except (pydantic.ValidationError, sqlite3.IntegrityError):
+        return {"result":False}
 
 
 server.run(port=5555)
