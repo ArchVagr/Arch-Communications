@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 import requests
 
+
 import main
 
 
@@ -147,7 +148,7 @@ class Registration(QWidget):
             response = requests.post("http://127.0.0.1:5555/add", json={"username": text[0], "password": text[1]})
             if response.json()["status"]:
                 self.close()
-                self.manager.add_main(Main_App,response.json())
+                self.manager.add_main(Main_App,response.json()["status"])
                 self.manager.demonstrate("App")
             else:
                 QMessageBox.warning(self, "Ошибка", "Имя пользователя занято!")
@@ -277,6 +278,7 @@ class Main_App(QWidget):
         self.user_id=user_id
         self.layout=QGridLayout()
         self.choosen_chat=None
+        self.last_message=None
 
         self.chat=Chat()
         self.type=QLineEdit()
@@ -300,8 +302,19 @@ class Main_App(QWidget):
         self.search.setFixedWidth(200)
 
         self.search.clicked.connect(self.open_new)
+        self.enter.clicked.connect(self.enter_message)
 
         self.contacts.itemClicked.connect(self.choose_chat)
+
+
+    def enter_message(self):
+        if self.type.text():
+            query = requests.post('http://127.0.0.1:5555/add_message', json={"chat_id":self.choosen_chat,"user_id":self.user_id,"content":self.type.text()})
+            self.type.clear()
+            self.last_message=query.json()["id"]
+        else:
+            QMessageBox.warning('Введите сообщение')
+
 
     def choose_chat(self,item):
         self.choosen_chat=self.contacts.itemWidget(item).chat_id
@@ -310,8 +323,10 @@ class Main_App(QWidget):
             for i in query.json()['result']:
                 if i["id"]==self.user_id:
                     self.chat.add_user_message(i["content"],i["created_at"])
+                    self.last_message=i["id"]
                 else:
                     self.chat.add_foreign_message(i["content"],i["created_at"])
+                    self.last_message = i["id"]
 
 
 

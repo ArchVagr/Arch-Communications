@@ -54,9 +54,14 @@ class Chat(Base):
 
     messages = relationship('Message', back_populates='chat')
 def add_chat(participant_1,participant_2):
-    chat=Chat(participant_1=participant_1, participant_2=participant_2)
-    session.add(chat)
-    session.commit()
+    if participant_1<participant_2:
+        chat=Chat(participant_1=participant_1, participant_2=participant_2)
+        session.add(chat)
+        session.commit()
+    else:
+        chat = Chat(participant_1=participant_2, participant_2=participant_1)
+        session.add(chat)
+        session.commit()
     return chat.chat_id
 
 def search_chat(participant_1,participant_2):
@@ -75,8 +80,10 @@ class Message(Base):
     author=relationship('User',back_populates='messages')
     chat=relationship('Chat',back_populates='messages')
 def add_message(chat_id,author_id,content):
-    session.add(Message(chat_id=chat_id,author_id=author_id,content=content))
+    message=Message(chat_id=chat_id,author_id=author_id,content=content)
+    session.add(message)
     session.commit()
+    return message
 
 def search_messages(chat_id):
     search=session.query(Message).filter_by(chat_id=chat_id).all()

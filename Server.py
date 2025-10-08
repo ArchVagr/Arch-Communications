@@ -23,6 +23,11 @@ class Chat(BaseModel):
 class MessageRequest(BaseModel):
     chat_id:int
 
+class Message(BaseModel):
+    chat_id:int
+    user_id:int
+    content:str
+
 def message_to_dict(m):
     return {
         "id": m.id,
@@ -52,7 +57,10 @@ def signin():
     query=UserVer.model_validate(received)
     try:
         check=main.signup_verification(query.username,query.password)
-        return {"status":check.id}
+        if check:
+            return {"status":check.id}
+        else:
+            return {"status":False}
     except (pydantic.ValidationError, sqlite3.IntegrityError):
         return {"status":False}
 
@@ -94,6 +102,13 @@ def search_message():
         return {"result":[message_to_dict(i) for i in action]}
     except (pydantic.ValidationError, sqlite3.IntegrityError):
         return {"result":False}
+
+@server.post("/add_message")
+def add_message():
+    data=request.get_json()
+    data=Message.model_validate(data)
+    message=main.add_message(data.chat_id,data.user_id,data.content)
+    return {"id":message.id}
 
 
 server.run(port=5555)
